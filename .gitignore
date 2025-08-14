@@ -1,16 +1,13 @@
-# ── Node / Vite
 node_modules/
-dist/                 # build Vite
-**/.vite/             # cache Vite (dans node_modules/.vite)
+dist/              
+**/.vite/   
 
-# ── Logs
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 lerna-debug.log*
 *.log
 
-# ── Tests (si tu en as)
 coverage/
 playwright-report/
 test-results/
@@ -18,17 +15,14 @@ cypress/videos/
 cypress/screenshots/
 cypress/downloads/
 
-# ── Fichiers d'env (garde un exemple)
 .env
 .env.* 
 !.env.example
 
-# ── OS / éditeurs
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
 
-# ── Divers
 *.local
 
