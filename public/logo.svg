@@ -1,0 +1,29 @@
+<svg width="280" height="60" viewBox="0 0 280 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lock Icon - position ajustée pour centrage vertical -->
+  <rect x="6" y="19" width="24" height="16" rx="3" fill="url(#lockGradientFull)"/>
+  <path d="M10 19V15C10 10.6 13.6 7 18 7C22.4 7 26 10.6 26 15V19" fill="none" stroke="url(#lockGradientFull)" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="18" cy="25" r="2" fill="white"/>
+  <rect x="17" y="25" width="2" height="4" fill="white"/>
+  
+  <!-- Separator Line -->
+  <rect x="50" y="18" width="2" height="24" fill="url(#separatorGradient)"/>
+  
+  <!-- Main Text EaZip -->
+  <text x="70" y="35" font-family="monospace" font-size="24" font-weight="bold" fill="#030213">EaZip</text>
+  
+  <!-- Subtitle -->
+  <text x="70" y="48" font-family="monospace" font-size="8" font-weight="normal" fill="#717182" letter-spacing="2px">ENCRYPT ZIP FILES</text>
+  
+  <defs>
+    <linearGradient id="lockGradientFull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="separatorGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+</svg>
