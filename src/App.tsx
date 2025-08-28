@@ -296,17 +296,17 @@ function App() {
                   {
                     value: "Aes256",
                     label: "AES-256 (Recommandé)",
-                    description: "Chiffrement fort, idéal pour la sécurité.",
+                    description: "Chiffrement fort. Natif macOS. Requiert 7-Zip sur Windows/Linux.",
                   },
                   {
                     value: "CryptoZip",
                     label: "CryptoZip (Compatible)",
-                    description: "Moins sécurisé, mais compatible nativement avec Windows/macOS.",
+                    description: "Chiffrement basique. Compatibilité native Windows/macOS/Linux.",
                   },
                   {
                     value: "SevenZip",
                     label: "7-Zip (Fichiers masqués)",
-                    description: "Chiffrement fort et masque le nom des fichiers.",
+                    description: "Chiffrement fort, masque les noms de fichiers. Requiert 7-Zip sur Windows/macOS/Linux.",
                   },
                 ]}
               />
