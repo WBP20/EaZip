@@ -49,7 +49,6 @@ npm install # ou yarn install
 Pour lancer l'application en mode développement (avec rechargement à chaud) :
 
 ```bash
-cd anyzip
 npm run tauri dev
 ```
 
@@ -58,12 +57,10 @@ npm run tauri dev
 Pour construire l'application pour votre système d'exploitation :
 
 ```bash
-cd anyzip
 npm run tauri build
 ```
 
 Les exécutables seront générés dans le dossier `anyzip/src-tauri/target/release/bundle/`.
 
 ## Licence
-
-(Vous pouvez ajouter votre licence ici, par exemple MIT, Apache 2.0, etc.)
+MIT
