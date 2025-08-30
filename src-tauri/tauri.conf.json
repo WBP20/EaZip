@@ -24,28 +24,7 @@
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost",
-      "freezePrototype": true,
-      "capabilities": [
-        {
-          "identifier": "main-capability",
-          "description": "Main window capability",
-          "windows": [
-            "main"
-          ],
-          "permissions": [
-            "core:default",
-            "log:default",
-            "generate-password",
-            "encrypt-files",
-            "cancel-encryption",
-            "dialog:open",
-            "dialog:save"
-          ]
-        }
-      ],
-      "assetProtocol": {
-        "scope": []
-      }
+      "freezePrototype": true
     }
   },
   "bundle": {

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use secrecy::{ExposeSecret, Secret};
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 use uuid::Uuid;
 use zip::unstable::write::FileOptionsExt;
 use zip::write::{FileOptions, ZipWriter};
@@ -45,16 +45,6 @@ async fn encrypt_files(
     encryption_method: EncryptionMethod,
 ) -> Result<String, String> {
     state.cancel_flag.store(false, Ordering::SeqCst);
-
-    for path_str in &file_paths {
-        let path = Path::new(path_str);
-        if !path.exists() {
-            return Err(format!("Le fichier n'existe pas : {}", path.display()));
-        }
-        if !path.is_file() {
-            return Err(format!("Le chemin n'est pas un fichier : {}", path.display()));
-        }
-    }
 
     match encryption_method {
         EncryptionMethod::SevenZip => {
@@ -213,7 +203,7 @@ async fn encrypt_files(
     }
 }
 
-#[tauri::command(name = "cancel-encryption")]
+#[tauri::command]
 fn cancel_encryption(state: tauri::State<'_, AppState>) {
     state.cancel_flag.store(true, Ordering::SeqCst);
 }
@@ -235,4 +225,3 @@ fn main() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-
