@@ -35,9 +35,9 @@
           "permissions": [
             "core:default",
             "log:default",
-            "generate_password",
-            "encrypt_files",
-            "cancel_encryption",
+            "generate-password",
+            "encrypt-files",
+            "cancel-encryption",
             "dialog:open",
             "dialog:save"
           ]

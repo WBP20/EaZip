@@ -151,7 +151,7 @@ function App() {
       });
 
       if (savePath) {
-        const result = await invoke("encrypt_files", {
+        const result = await invoke("encrypt-files", {
           filePaths: droppedFilePaths,
           outputPath: savePath,
           password,

@@ -213,7 +213,7 @@ async fn encrypt_files(
     }
 }
 
-#[tauri::command]
+#[tauri::command(name = "cancel-encryption")]
 fn cancel_encryption(state: tauri::State<'_, AppState>) {
     state.cancel_flag.store(true, Ordering::SeqCst);
 }
