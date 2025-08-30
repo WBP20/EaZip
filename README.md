@@ -60,7 +60,7 @@ Pour construire l'application pour votre système d'exploitation :
 npm run tauri build
 ```
 
-Les exécutables seront générés dans le dossier `anyzip/src-tauri/target/release/bundle/`.
+Les exécutables seront générés dans le dossier `src-tauri/target/release/bundle/`.
 
 ## Licence
 MIT
