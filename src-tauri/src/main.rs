@@ -9,7 +9,7 @@ use std::sync::Arc;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use secrecy::{ExposeSecret, Secret};
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
 use uuid::Uuid;
 use zip::unstable::write::FileOptionsExt;
 use zip::write::{FileOptions, ZipWriter};
