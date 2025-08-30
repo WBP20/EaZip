@@ -9,7 +9,7 @@ use std::sync::Arc;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use secrecy::{ExposeSecret, Secret};
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
 use uuid::Uuid;
 use zip::unstable::write::FileOptionsExt;
 use zip::write::{FileOptions, ZipWriter};
@@ -45,6 +45,16 @@ async fn encrypt_files(
     encryption_method: EncryptionMethod,
 ) -> Result<String, String> {
     state.cancel_flag.store(false, Ordering::SeqCst);
+
+    for path_str in &file_paths {
+        let path = Path::new(path_str);
+        if !path.exists() {
+            return Err(format!("Le fichier n'existe pas : {}", path.display()));
+        }
+        if !path.is_file() {
+            return Err(format!("Le chemin n'est pas un fichier : {}", path.display()));
+        }
+    }
 
     match encryption_method {
         EncryptionMethod::SevenZip => {

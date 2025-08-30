@@ -33,3 +33,4 @@ uuid = { version = "1.8.0", features = ["v4"] }
 secrecy = { version = "0.8.0", features = ["serde"] }
 tauri-plugin-log = "^2"
 chrono = "0.4.38"
+slab = "0.4.11"

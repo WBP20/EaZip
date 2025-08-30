@@ -23,13 +23,36 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost",
+      "freezePrototype": true,
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "description": "Main window capability",
+          "windows": [
+            "main"
+          ],
+          "permissions": [
+            "core:default",
+            "log:default",
+            "generate_password",
+            "encrypt_files",
+            "cancel_encryption",
+            "dialog:open",
+            "dialog:save"
+          ]
+        }
+      ],
+      "assetProtocol": {
+        "scope": []
+      }
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
     "icon": [
+      "icons/icon.png",
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
