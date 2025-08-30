@@ -33,7 +33,7 @@ Assurez-vous d'avoir les éléments suivants installés sur votre machine :
 ```bash
 # Clonez le dépôt
 git clone https://github.com/votre-utilisateur/EaZip.git
-cd EaZip/anyzip
+cd EaZip
 
 # Installez les dépendances frontend
 npm install # ou yarn install
