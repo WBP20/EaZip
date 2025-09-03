@@ -80,3 +80,10 @@
   mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
 }
+
+/* Force Sonner à bottom-center au cas où un style override le container */
+/* ==== Sonner: verrouille la position bottom-center et remonte le z-index ==== */
+
+/* Le conteneur du toaster doit vivre directement sous <body> */
+
+  

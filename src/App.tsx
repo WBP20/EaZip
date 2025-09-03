@@ -6,7 +6,7 @@ import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
 import { EyeIcon, EyeOffIcon, CopyIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
+import { Toaster } from '@/components/ui/sonner';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -19,10 +19,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { Toaster, toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Combobox } from "@/components/ui/combobox";
 
-import "./style.css";
+
 
 const appWindow = WebviewWindow.getCurrent();
 
@@ -353,14 +353,16 @@ function App() {
                 className="p-2"
               >
                 Fermer
-              </Button>
+              </Button>	
+			  <Toaster />
             </Alert>
           )}
         </CardFooter>
       </Card>
-      <Toaster position="bottom-center" richColors />
+      
     </div>
   );
 }
+
 
 export default App;
