@@ -34,3 +34,5 @@ secrecy = { version = "0.8.0", features = ["serde"] }
 tauri-plugin-log = "^2"
 chrono = "0.4.38"
 slab = "0.4.11"
+walkdir = "2.5.0"
+tempfile = "3.23.0"

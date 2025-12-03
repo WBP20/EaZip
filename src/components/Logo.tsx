@@ -3,63 +3,35 @@ import React from 'react';
 const Logo = ({ className = "" }: { className?: string }) => {
   return (
     <div className={`flex items-center justify-center gap-8 ${className}`}>
-      {/* Lock Icon with Gradient */}
+      {/* Smart Folder Logo */}
       <div className="relative">
         <svg
-          width="64"
-          height="64"
-          viewBox="0 0 64 64"
+          width="80"
+          height="80"
+          viewBox="0 0 100 100"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           className="drop-shadow-lg"
         >
-          {/* Lock body */}
-          <rect
-            x="16"
-            y="26"
-            width="32"
-            height="22"
-            rx="4"
-            fill="url(#lockGradientSimple)"
-          />
-          
-          {/* Lock shackle */}
-          <path
-            d="M21 26V21C21 15.4 26.4 10 32 10C37.6 10 43 15.4 43 21V26"
-            fill="none"
-            stroke="url(#lockGradientSimple)"
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-          
-          {/* Keyhole */}
-          <circle
-            cx="32"
-            cy="35"
-            r="2.5"
-            fill="white"
-          />
-          <rect
-            x="31"
-            y="35"
-            width="2"
-            height="6"
-            fill="white"
-          />
-          
           <defs>
-            <linearGradient id="lockGradientSimple" x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient id="gradAncient" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#8b5cf6" />
               <stop offset="50%" stopColor="#3b82f6" />
               <stop offset="100%" stopColor="#06b6d4" />
             </linearGradient>
           </defs>
+          {/* Folder Body (Squircle with Tab) */}
+          <path d="M20 25 H40 L50 35 H80 C85.5 35 90 39.5 90 45 V80 C90 85.5 85.5 90 80 90 H20 C14.5 90 10 85.5 10 80 V35 C10 29.5 14.5 25 20 25 Z" fill="url(#gradAncient)" />
+
+          {/* Keyhole (Reduced Size & Lowered) */}
+          <circle cx="50" cy="60" r="6" fill="white" />
+          <path d="M46 60 L45 75 H55 L54 60 Z" fill="white" />
         </svg>
       </div>
-      
+
       {/* Vertical Separator */}
       <div className="w-0.5 h-16 bg-gradient-to-b from-purple-500 via-blue-500 to-cyan-500"></div>
-      
+
       {/* Logo Text - EaZip seulement */}
       <div className="flex flex-col">
         <h1 className="text-5xl font-bold text-foreground tracking-wider font-sans" style={{

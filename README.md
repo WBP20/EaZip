@@ -4,12 +4,12 @@ Application de bureau multiplateforme pour chiffrer et déchiffrer des fichiers 
 
 ## Fonctionnalités
 
-*   Chiffrement de fichiers et dossiers en archives ZIP.
-*   Prise en charge de plusieurs méthodes de chiffrement (AES-256, CryptoZip, 7-Zip).
-*   Génération de mots de passe sécurisés.
-*   Interface utilisateur intuitive avec glisser-déposer.
-*   Affichage de la progression du chiffrement.
-*   Compatible avec Windows, macOS et Linux.
+*   **Chiffrement** : Créez des archives ZIP sécurisées avec AES-256, CryptoZip ou 7-Zip.
+*   **Déchiffrement** : Ouvrez et extrayez vos archives chiffrées en toute simplicité.
+*   **Sécurité Renforcée** : Protection contre les vulnérabilités Zip Slip et Zip Bomb.
+*   **Génération de mots de passe** : Créez des mots de passe forts automatiquement.
+*   **Interface Moderne** : Glisser-déposer, mode sombre/clair, et nouveau logo "Smart Folder".
+*   **Multiplateforme** : Compatible Windows, macOS et Linux.
 
 ## Technologies Utilisées
 

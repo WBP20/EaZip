@@ -4,7 +4,7 @@ import { save, open } from "@tauri-apps/plugin-dialog";
 import Logo from "@/components/Logo";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
-import { EyeIcon, EyeOffIcon, CopyIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, CopyIcon, FileIcon, FolderIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Toaster } from '@/components/ui/sonner';
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
 
 import { toast } from "@/components/ui/sonner";
 import { Combobox } from "@/components/ui/combobox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 
@@ -28,23 +29,32 @@ const appWindow = WebviewWindow.getCurrent();
 
 function App() {
   const [password, setPassword] = useState("");
-  const [droppedFilePaths, setDroppedFilePaths] = useState<string[]>([]);
+  const [droppedFiles, setDroppedFiles] = useState<{ path: string; isDir: boolean }[]>([]);
   const [progress, setProgress] = useState(0);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [zipOutputPath, setZipOutputPath] = useState<string | null>(null);
+  const [mode, setMode] = useState<"encrypt" | "decrypt">("encrypt");
 
   useEffect(() => {
     const unlistenProgress = listen<number>("encryption_progress", (event) => {
       setProgress(event.payload);
     });
 
-    const unlistenDrop = appWindow.onDragDropEvent((event) => {
+    const unlistenDrop = appWindow.onDragDropEvent(async (event) => {
       if (event.payload.type === "drop") {
-        setDroppedFilePaths(event.payload.paths);
-        setErrorMessage(null); // Clear error on new file drop
+        const paths = event.payload.paths;
+        try {
+          const metadata = await invoke<{ path: string; isDir: boolean }[]>("get_file_metadata", { paths });
+          setDroppedFiles(metadata);
+          setErrorMessage(null);
+        } catch (error) {
+          console.error("Failed to get file metadata:", error);
+          // Fallback to assuming files if metadata fails, or handle error appropriately
+          setDroppedFiles(paths.map(p => ({ path: p, isDir: false })));
+        }
       }
     });
 
@@ -59,13 +69,13 @@ function App() {
     setProgress(0);
     setErrorMessage(null);
     setSuccessMessage(null);
-    setDroppedFilePaths([]);
+    setDroppedFiles([]);
     setZipOutputPath(null);
     await invoke("cancel_encryption");
     toast.info("Chiffrement annulé.", { duration: 2000 });
   };
 
-    const generatePassword = async () => {
+  const generatePassword = async () => {
     try {
       const newPassword = await invoke<string>("generate_password");
       setPassword(newPassword);
@@ -100,9 +110,13 @@ function App() {
         newFiles = [selected];
       }
 
-      setDroppedFilePaths((prevPaths) => {
-        const uniquePaths = new Set([...prevPaths, ...newFiles]);
-        return Array.from(uniquePaths);
+      const newFileObjects = newFiles.map(path => ({ path, isDir: false }));
+
+      setDroppedFiles((prevFiles) => {
+        // Filter out duplicates based on path
+        const existingPaths = new Set(prevFiles.map(f => f.path));
+        const uniqueNewFiles = newFileObjects.filter(f => !existingPaths.has(f.path));
+        return [...prevFiles, ...uniqueNewFiles];
       });
       setErrorMessage(null); // Clear error on new file selection
     } catch (error) {
@@ -110,22 +124,45 @@ function App() {
     }
   };
 
+  const selectFolder = async () => {
+    try {
+      const selected = await open({ directory: true, multiple: true });
+      let newFiles: string[] = [];
+      if (Array.isArray(selected)) {
+        newFiles = selected;
+      } else if (selected) {
+        newFiles = [selected];
+      }
+
+      const newFileObjects = newFiles.map(path => ({ path, isDir: true }));
+
+      setDroppedFiles((prevFiles) => {
+        const existingPaths = new Set(prevFiles.map(f => f.path));
+        const uniqueNewFiles = newFileObjects.filter(f => !existingPaths.has(f.path));
+        return [...prevFiles, ...uniqueNewFiles];
+      });
+      setErrorMessage(null);
+    } catch (error) {
+      console.error("Failed to select folder:", error);
+    }
+  };
+
   const removeFile = (pathToRemove: string) => {
-    setDroppedFilePaths((prevPaths) =>
-      prevPaths.filter((path) => path !== pathToRemove)
+    setDroppedFiles((prevFiles) =>
+      prevFiles.filter((file) => file.path !== pathToRemove)
     );
   };
 
   const clearFiles = () => {
-    setDroppedFilePaths([]);
+    setDroppedFiles([]);
     setErrorMessage(null);
     setSuccessMessage(null);
   };
 
-    const [encryptionMethod, setEncryptionMethod] = useState("Aes256");
+  const [encryptionMethod, setEncryptionMethod] = useState("Aes256");
 
   const encryptFiles = async () => {
-    if (droppedFilePaths.length === 0) {
+    if (droppedFiles.length === 0) {
       setErrorMessage(
         "Veuillez sélectionner ou glisser-déposer des fichiers d'abord."
       );
@@ -142,17 +179,33 @@ function App() {
     setProgress(0);
 
     try {
-      const filters = encryptionMethod === 'SevenZip' 
+      const filters = encryptionMethod === 'SevenZip'
         ? [{ name: '7-Zip Archive', extensions: ['7z'] }]
         : [{ name: 'Zip Archive', extensions: ['zip'] }];
 
+      let defaultPath = "archive";
+      if (droppedFiles.length > 0) {
+        const firstFile = droppedFiles[0];
+        // Extract filename from path
+        let baseName = firstFile.path.split(/[/\\]/).pop() || "archive";
+        // Remove extension if it exists and it's not a directory (though directories usually don't have extensions like files)
+        // If it's a file, we want to strip the extension. e.g. test.txt -> test
+        if (!firstFile.isDir) {
+          baseName = baseName.replace(/\.[^/.]+$/, "");
+        }
+
+        const ext = encryptionMethod === 'SevenZip' ? '7z' : 'zip';
+        defaultPath = `${baseName}_${encryptionMethod}.${ext}`;
+      }
+
       const savePath = await save({
         filters,
+        defaultPath,
       });
 
       if (savePath) {
         const result = await invoke("encrypt_files", {
-          filePaths: droppedFilePaths,
+          filePaths: droppedFiles.map(f => f.path),
           outputPath: savePath,
           password,
           encryptionMethod,
@@ -177,7 +230,53 @@ function App() {
     } finally {
       setIsEncrypting(false);
       setProgress(0);
-      setDroppedFilePaths([]);
+      setDroppedFiles([]);
+    }
+  };
+
+  const decryptFiles = async () => {
+    if (droppedFiles.length === 0) {
+      setErrorMessage(
+        "Veuillez sélectionner ou glisser-déposer des fichiers d'abord."
+      );
+      return;
+    }
+
+    if (mode === 'encrypt' && !password) {
+      setErrorMessage("Veuillez entrer ou générer un mot de passe.");
+      return;
+    }
+
+    setErrorMessage(null);
+    setIsEncrypting(true);
+    setProgress(0);
+
+    try {
+      const outputDir = await open({
+        directory: true,
+        multiple: false,
+      });
+
+      if (outputDir) {
+        for (const file of droppedFiles) {
+          await invoke("decrypt_file", {
+            filePath: file.path,
+            outputDir,
+            password,
+          });
+        }
+        setSuccessMessage(`Fichiers déchiffrés vers ${outputDir}`);
+        setZipOutputPath(outputDir as string);
+      } else {
+        toast.info("Déchiffrement annulé par l'utilisateur.", { duration: 2000 });
+      }
+    } catch (error) {
+      console.error("Decryption failed:", error);
+      setErrorMessage(`Échec du déchiffrement : ${error}`);
+    } finally {
+      setIsEncrypting(false);
+      setProgress(0);
+      setDroppedFiles([]);
     }
   };
 
@@ -185,133 +284,175 @@ function App() {
     <div className="min-h-screen flex items-start justify-center p-4 font-sans">
       <Card className="w-full max-w-2xl mx-auto flex flex-col my-auto">
         <CardHeader>
-          <CardTitle className="flex justify-center">
+          <CardTitle className="flex justify-center mb-6">
             <Logo className="w-full" />
           </CardTitle>
           <CardDescription className="text-lg text-center mb-4">
-            Chiffrez vos fichiers en toute simplicité.
+            Chiffrez et déchiffrez vos fichiers et dossiers.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col flex-grow">
-          <div className="grid w-full items-center gap-6">
-            <div
-              className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer min-h-[8rem] py-8"
-              onClick={selectFiles}
-            >
-              {droppedFilePaths.length > 0 ? (
-                <div className="w-full">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-sm font-medium">
-                      Fichier(s) sélectionné(s) :
-                    </p>
-                    <Button variant="ghost" size="sm" onClick={clearFiles}>
-                      Tout effacer
-                    </Button>
-                  </div>
-                  <ul className="list-none p-0 m-0 space-y-1 max-h-32 overflow-y-auto scroll-fade">
-                    {droppedFilePaths.map((path, index) => (
-                      <li
-                        key={index}
-                        className="flex items-center justify-between text-xs bg-secondary p-1.5 rounded-md"
-                      >
-                        <span>{path.split("/").pop()}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeFile(path);
-                          }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="lucide lucide-x"
-                          >
-                            <path d="M18 6 6 18" />
-                            <path d="m6 6 12 12" />
-                          </svg>
+          <Tabs value={mode} onValueChange={(v: string) => setMode(v as "encrypt" | "decrypt")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="encrypt">Chiffrer</TabsTrigger>
+              <TabsTrigger value="decrypt">Déchiffrer</TabsTrigger>
+            </TabsList>
+
+            <div className="grid w-full items-center gap-6">
+              <div
+                className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg min-h-[8rem] py-8"
+                onClick={selectFiles}
+              >
+                {droppedFiles.length > 0 ? (
+                  <div className="w-full">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                      <p className="text-sm font-medium whitespace-nowrap">
+                        Éléments sélectionné(s) :
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={selectFiles}>
+                          + Fichiers
                         </Button>
-                      </li>
-                    ))}
-                  </ul>
+                        {mode === 'encrypt' && (
+                          <Button variant="outline" size="sm" onClick={selectFolder}>
+                            + Dossier
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={clearFiles}>
+                          Tout effacer
+                        </Button>
+                      </div>
+                    </div>
+                    <ul className="list-none p-0 m-0 space-y-1 max-h-32 overflow-y-auto scroll-fade">
+                      {droppedFiles.map((file, index) => (
+                        <li
+                          key={index}
+                          className="flex items-center justify-between text-xs bg-secondary p-1.5 rounded-md"
+                        >
+                          <div className="flex items-center gap-2 truncate max-w-[300px]" title={file.path}>
+                            {file.isDir ? <FolderIcon className="w-4 h-4 text-blue-500 flex-shrink-0" /> : <FileIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />}
+                            <span className="truncate">{file.path.split("/").pop()}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFile(file.path);
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="lucide lucide-x"
+                            >
+                              <path d="M18 6 6 18" />
+                              <path d="m6 6 12 12" />
+                            </svg>
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <p className="text-center text-muted-foreground">
+                      {mode === 'encrypt' ? "Glissez-déposez des fichiers ou dossiers ici" : "Glissez-déposez des fichiers ici"}
+                    </p>
+                    <div className="relative flex items-center justify-center w-full">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          Ou
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <Button onClick={selectFiles}>Sélectionner Fichiers</Button>
+                      {mode === 'encrypt' && (
+                        <Button variant="secondary" onClick={selectFolder}>Sélectionner Dossier</Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center space-x-2">
+                  <Input
+                    id="password"
+                    placeholder={mode === 'encrypt' ? "Entrez votre mot de passe" : "Mot de passe (laisser vide si non chiffré)"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type={showPassword ? "text" : "password"}
+                    className="flex-grow"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={
+                      showPassword
+                        ? "Masquer le mot de passe"
+                        : "Afficher le mot de passe"
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeOffIcon className="h-4 w-4" />
+                    ) : (
+                      <EyeIcon className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={copyPassword}
+                    disabled={!password}
+                  >
+                    <CopyIcon className="h-4 w-4 mr-2" /> Copier
+                  </Button>
                 </div>
-              ) : (
-                <p>
-                  Glissez-déposez des fichiers ici, ou cliquez pour sélectionner
-                </p>
+                {mode === 'encrypt' && (
+                  <Button variant="outline" onClick={generatePassword}>
+                    Générer un mot de passe
+                  </Button>
+                )}
+              </div>
+              {mode === 'encrypt' && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-medium">Méthode de chiffrement :</p>
+                  <Combobox
+                    value={encryptionMethod}
+                    onChange={setEncryptionMethod}
+                    options={[
+                      {
+                        value: "Aes256",
+                        label: "AES-256 (Recommandé)",
+                        description: "Chiffrement fort. Natif macOS. Requiert 7-Zip sur Windows/Linux.",
+                      },
+                      {
+                        value: "CryptoZip",
+                        label: "CryptoZip (Compatible)",
+                        description: "Chiffrement basique. Compatibilité native Windows/macOS/Linux.",
+                      },
+                      {
+                        value: "SevenZip",
+                        label: "7-Zip (Fichiers masqués)",
+                        description: "Chiffrement fort, masque les noms de fichiers. Requiert 7-Zip sur Windows/macOS/Linux.",
+                      },
+                    ]}
+                  />
+                </div>
               )}
             </div>
-                        <div className="flex flex-col gap-4">
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="password"
-                  placeholder="Entrez votre mot de passe"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type={showPassword ? "text" : "password"}
-                  className="flex-grow"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={
-                    showPassword
-                      ? "Masquer le mot de passe"
-                      : "Afficher le mot de passe"
-                  }
-                >
-                  {showPassword ? (
-                    <EyeOffIcon className="h-4 w-4" />
-                  ) : (
-                    <EyeIcon className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={copyPassword}
-                  disabled={!password}
-                >
-                  <CopyIcon className="h-4 w-4 mr-2" /> Copier
-              </Button>
-            </div>
-              <Button variant="outline" onClick={generatePassword}>
-                Générer un mot de passe
-              </Button>
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium">Méthode de chiffrement :</p>
-              <Combobox
-                value={encryptionMethod}
-                onChange={setEncryptionMethod}
-                options={[
-                  {
-                    value: "Aes256",
-                    label: "AES-256 (Recommandé)",
-                    description: "Chiffrement fort. Natif macOS. Requiert 7-Zip sur Windows/Linux.",
-                  },
-                  {
-                    value: "CryptoZip",
-                    label: "CryptoZip (Compatible)",
-                    description: "Chiffrement basique. Compatibilité native Windows/macOS/Linux.",
-                  },
-                  {
-                    value: "SevenZip",
-                    label: "7-Zip (Fichiers masqués)",
-                    description: "Chiffrement fort, masque les noms de fichiers. Requiert 7-Zip sur Windows/macOS/Linux.",
-                  },
-                ]}
-              />
-            </div>
-          </div>
+          </Tabs>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           {errorMessage && (
@@ -320,12 +461,12 @@ function App() {
             </p>
           )}
           <Button
-            onClick={isEncrypting ? handleCancel : encryptFiles}
-            disabled={droppedFilePaths.length === 0 || !password}
+            onClick={isEncrypting ? handleCancel : (mode === 'encrypt' ? encryptFiles : decryptFiles)}
+            disabled={droppedFiles.length === 0 || (mode === 'encrypt' && !password)}
             className="w-full"
             variant={isEncrypting ? "destructive" : "default"}
           >
-            {isEncrypting ? "Annuler" : "Chiffrer"}
+            {isEncrypting ? "Annuler" : (mode === 'encrypt' ? "Chiffrer" : "Déchiffrer")}
           </Button>
           {isEncrypting && (
             <div className="w-full">
@@ -336,7 +477,8 @@ function App() {
           {successMessage && (
             <Alert className="w-full flex flex-col items-center text-center">
               <AlertDescription className="mb-4">
-                Archive exportée vers :{" "}
+                {mode === 'encrypt' ? "Archive exportée vers :" : "Fichiers déchiffrés vers :"}
+                <br />
                 <span className="font-mono text-sm break-all">
                   {zipOutputPath}
                 </span>
@@ -353,13 +495,13 @@ function App() {
                 className="p-2"
               >
                 Fermer
-              </Button>	
-			  <Toaster />
+              </Button>
+              <Toaster />
             </Alert>
           )}
         </CardFooter>
       </Card>
-      
+
     </div>
   );
 }
