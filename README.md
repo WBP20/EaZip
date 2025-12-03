@@ -8,7 +8,6 @@ Application de bureau multiplateforme pour chiffrer et déchiffrer des fichiers 
 *   **Déchiffrement** : Ouvrez et extrayez vos archives chiffrées en toute simplicité.
 *   **Sécurité Renforcée** : Protection contre les vulnérabilités Zip Slip et Zip Bomb.
 *   **Génération de mots de passe** : Créez des mots de passe forts automatiquement.
-*   **Interface Moderne** : Glisser-déposer, mode sombre/clair, et nouveau logo "Smart Folder".
 *   **Multiplateforme** : Compatible Windows, macOS et Linux.
 
 ## Technologies Utilisées
