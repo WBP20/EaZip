@@ -4,7 +4,7 @@ import { save, open } from "@tauri-apps/plugin-dialog";
 import Logo from "@/components/Logo";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
-import { EyeIcon, EyeOffIcon, CopyIcon, FileIcon, FolderIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, CopyIcon, FileIcon, FolderIcon, LinkIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Toaster } from '@/components/ui/sonner';
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,9 @@ const appWindow = WebviewWindow.getCurrent();
 
 function App() {
   const [password, setPassword] = useState("");
-  const [droppedFiles, setDroppedFiles] = useState<{ path: string; isDir: boolean }[]>([]);
+
   const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState<string>("");
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -38,38 +39,62 @@ function App() {
   const [zipOutputPath, setZipOutputPath] = useState<string | null>(null);
   const [mode, setMode] = useState<"encrypt" | "decrypt">("encrypt");
 
+  const [filesToEncrypt, setFilesToEncrypt] = useState<{ path: string; isDir: boolean; isSymlink?: boolean; error?: string; debug_info?: string }[]>([]);
+  const [filesToDecrypt, setFilesToDecrypt] = useState<{ path: string; isDir: boolean; isSymlink?: boolean; error?: string; debug_info?: string }[]>([]);
+
+  const droppedFiles = mode === 'encrypt' ? filesToEncrypt : filesToDecrypt;
+
+  const setDroppedFiles = (value: any) => {
+    const setter = mode === 'encrypt' ? setFilesToEncrypt : setFilesToDecrypt;
+    setter(value);
+  };
+
   useEffect(() => {
     const unlistenProgress = listen<number>("encryption_progress", (event) => {
       setProgress(event.payload);
+    });
+
+    const unlistenStatus = listen<string>("encryption_status", (event) => {
+      setStatusMessage(event.payload);
     });
 
     const unlistenDrop = appWindow.onDragDropEvent(async (event) => {
       if (event.payload.type === "drop") {
         const paths = event.payload.paths;
         try {
-          const metadata = await invoke<{ path: string; isDir: boolean }[]>("get_file_metadata", { paths });
+          const metadata = await invoke<{ path: string; isDir: boolean; isSymlink: boolean; error?: string; debug_info?: string }[]>("get_file_metadata", { paths });
           setDroppedFiles(metadata);
           setErrorMessage(null);
         } catch (error) {
           console.error("Failed to get file metadata:", error);
+          toast.error("Erreur lors de l'analyse des fichiers déposés. Certains dossiers peuvent être identifiés comme des fichiers.", { duration: 4000 });
           // Fallback to assuming files if metadata fails, or handle error appropriately
-          setDroppedFiles(paths.map(p => ({ path: p, isDir: false })));
+          setDroppedFiles(paths.map(p => ({ path: p, isDir: false, isSymlink: false, error: "Failed to get metadata" })));
         }
       }
     });
 
     return () => {
       unlistenProgress.then((f) => f());
+      unlistenStatus.then((f) => f());
       unlistenDrop.then((f) => f());
     };
   }, []);
 
+  useEffect(() => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setZipOutputPath(null);
+    setProgress(0);
+    setStatusMessage("");
+  }, [mode]);
+
   const handleCancel = async () => {
     setIsEncrypting(false);
     setProgress(0);
+    setStatusMessage("");
     setErrorMessage(null);
     setSuccessMessage(null);
-    setDroppedFiles([]);
     setZipOutputPath(null);
     await invoke("cancel_encryption");
     toast.info("Chiffrement annulé.", { duration: 2000 });
@@ -110,12 +135,12 @@ function App() {
         newFiles = [selected];
       }
 
-      const newFileObjects = newFiles.map(path => ({ path, isDir: false }));
+      const newFileObjects = newFiles.map(path => ({ path, isDir: false, isSymlink: false }));
 
-      setDroppedFiles((prevFiles) => {
+      setDroppedFiles((prevFiles: { path: string; isDir: boolean; isSymlink?: boolean; error?: string; debug_info?: string }[]) => {
         // Filter out duplicates based on path
-        const existingPaths = new Set(prevFiles.map(f => f.path));
-        const uniqueNewFiles = newFileObjects.filter(f => !existingPaths.has(f.path));
+        const existingPaths = new Set(prevFiles.map((f) => f.path));
+        const uniqueNewFiles = newFileObjects.filter((f) => !existingPaths.has(f.path));
         return [...prevFiles, ...uniqueNewFiles];
       });
       setErrorMessage(null); // Clear error on new file selection
@@ -134,11 +159,11 @@ function App() {
         newFiles = [selected];
       }
 
-      const newFileObjects = newFiles.map(path => ({ path, isDir: true }));
+      const newFileObjects = newFiles.map(path => ({ path, isDir: true, isSymlink: false }));
 
-      setDroppedFiles((prevFiles) => {
-        const existingPaths = new Set(prevFiles.map(f => f.path));
-        const uniqueNewFiles = newFileObjects.filter(f => !existingPaths.has(f.path));
+      setDroppedFiles((prevFiles: { path: string; isDir: boolean; isSymlink?: boolean; error?: string; debug_info?: string }[]) => {
+        const existingPaths = new Set(prevFiles.map((f) => f.path));
+        const uniqueNewFiles = newFileObjects.filter((f) => !existingPaths.has(f.path));
         return [...prevFiles, ...uniqueNewFiles];
       });
       setErrorMessage(null);
@@ -148,7 +173,7 @@ function App() {
   };
 
   const removeFile = (pathToRemove: string) => {
-    setDroppedFiles((prevFiles) =>
+    setDroppedFiles((prevFiles: { path: string; isDir: boolean; isSymlink?: boolean; error?: string; debug_info?: string }[]) =>
       prevFiles.filter((file) => file.path !== pathToRemove)
     );
   };
@@ -177,6 +202,7 @@ function App() {
     setErrorMessage(null);
     setIsEncrypting(true);
     setProgress(0);
+    setStatusMessage("Démarrage...");
 
     try {
       const filters = encryptionMethod === 'SevenZip'
@@ -230,7 +256,7 @@ function App() {
     } finally {
       setIsEncrypting(false);
       setProgress(0);
-      setDroppedFiles([]);
+      setStatusMessage("");
     }
   };
 
@@ -250,6 +276,7 @@ function App() {
     setErrorMessage(null);
     setIsEncrypting(true);
     setProgress(0);
+    setStatusMessage("Déchiffrement en cours...");
 
     try {
       const outputDir = await open({
@@ -276,7 +303,7 @@ function App() {
     } finally {
       setIsEncrypting(false);
       setProgress(0);
-      setDroppedFiles([]);
+      setStatusMessage("");
     }
   };
 
@@ -330,8 +357,19 @@ function App() {
                           className="flex items-center justify-between text-xs bg-secondary p-1.5 rounded-md"
                         >
                           <div className="flex items-center gap-2 truncate max-w-[300px]" title={file.path}>
-                            {file.isDir ? <FolderIcon className="w-4 h-4 text-blue-500 flex-shrink-0" /> : <FileIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />}
-                            <span className="truncate">{file.path.split("/").pop()}</span>
+                            {file.isSymlink ? (
+                              <LinkIcon className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                            ) : file.isDir ? (
+                              <FolderIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                            ) : (
+                              <FileIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            )}
+                            <div className="flex flex-col truncate">
+                              <span className="truncate">{file.path.split("/").pop()}</span>
+                              <span className="text-[10px] text-gray-400 truncate" title={file.error}>
+                                {file.error && <span className="text-red-500">{file.error}</span>}
+                              </span>
+                            </div>
                           </div>
                           <Button
                             variant="ghost"
@@ -391,7 +429,10 @@ function App() {
                     id="password"
                     placeholder={mode === 'encrypt' ? "Entrez votre mot de passe" : "Mot de passe (laisser vide si non chiffré)"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setErrorMessage(null);
+                    }}
                     type={showPassword ? "text" : "password"}
                     className="flex-grow"
                   />
@@ -462,7 +503,7 @@ function App() {
           )}
           <Button
             onClick={isEncrypting ? handleCancel : (mode === 'encrypt' ? encryptFiles : decryptFiles)}
-            disabled={droppedFiles.length === 0 || (mode === 'encrypt' && !password)}
+            disabled={!isEncrypting && (droppedFiles.length === 0 || (mode === 'encrypt' && !password))}
             className="w-full"
             variant={isEncrypting ? "destructive" : "default"}
           >
@@ -471,7 +512,7 @@ function App() {
           {isEncrypting && (
             <div className="w-full">
               <Progress value={progress} className="w-full" />
-              <p className="text-sm text-center mt-2">{progress}%</p>
+              <p className="text-sm text-center mt-2">{statusMessage} ({progress}%)</p>
             </div>
           )}
           {successMessage && (
