@@ -6,7 +6,6 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::os::unix::fs::MetadataExt;
 
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -89,7 +88,15 @@ fn get_file_metadata(paths: Vec<String>) -> Vec<FileMetadata> {
             // Debug: If it's supposed to be a dir but isn't, get raw mode
             let error = if !is_dir && error.is_none() {
                  if let Ok(m) = fs::metadata(&path) {
-                     Some(format!("Not a dir. Mode: {:o}, Size: {}", m.mode(), m.len()))
+                     #[cfg(unix)]
+                     {
+                         use std::os::unix::fs::MetadataExt;
+                         Some(format!("Not a dir. Mode: {:o}, Size: {}", m.mode(), m.len()))
+                     }
+                     #[cfg(not(unix))]
+                     {
+                         Some(format!("Not a dir. Size: {}", m.len()))
+                     }
                  } else {
                      error
                  }
@@ -99,7 +106,15 @@ fn get_file_metadata(paths: Vec<String>) -> Vec<FileMetadata> {
             
             let debug_info = if let Ok(m) = fs::metadata(&path) {
                  let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-                 Some(format!("Canonical: {}, Mode: {:o}, IsDir: {}, IsFile: {}", canonical.display(), m.mode(), m.is_dir(), m.is_file()))
+                 #[cfg(unix)]
+                 {
+                     use std::os::unix::fs::MetadataExt;
+                     Some(format!("Canonical: {}, Mode: {:o}, IsDir: {}, IsFile: {}", canonical.display(), m.mode(), m.is_dir(), m.is_file()))
+                 }
+                 #[cfg(not(unix))]
+                 {
+                     Some(format!("Canonical: {}, IsDir: {}, IsFile: {}", canonical.display(), m.is_dir(), m.is_file()))
+                 }
             } else {
                  None
             };
